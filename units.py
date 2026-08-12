@@ -34,12 +34,11 @@ def _dimension_of(unit: str) -> str | None:
 
 def classify_unit(raw_unit: str, canonical_unit: str) -> str:
     """
-    Классифицирует единицу измерения относительно эталонной:
-    - canonical: совпадает с эталонной из CANONICAL_UNITS
-    - same dimension: конвертируется через простые операции
-    - another dimension: требует внешних данных для конвертации
-    - unknown: указана, но не распознана словарём
-    - no data: отсутствие данных
+    Classication of the unit:
+    - canonical: complies with the standard from CANONICAL_UNITS
+    - same dimension: can be converted using simple operations
+    - another dimension: need external data to convert
+    - unknown: not recognized by the dictionary
     """
     if pd.isna(raw_unit):
         return "no data"
@@ -60,7 +59,7 @@ def classify_unit(raw_unit: str, canonical_unit: str) -> str:
 
 def unit_dimension_report(df: pd.DataFrame,) -> pd.DataFrame:
     """
-    Сводка по Unit-колонкам датасета
+    Statistic for unit columns of the dataset
     """
     unit_columns = tuple(CANONICAL_UNITS)
     canonical_units = CANONICAL_UNITS

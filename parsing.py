@@ -50,10 +50,10 @@ UNIT_NORMALIZATION = {
 
 def parse_raw_csv(path: str, verbose: bool = True, out_path: Optional[str] = None) -> pd.DataFrame:
     """
-    Парсинг и преобразование необработанного CSV в DataFrame
-    - Каждая строка соответствует каждой записи о синтезе
-    - При наличии MISSING_SENTINEL в ячейке он заменяется на NaN
-    - Единицы из столбцов UNIT_COLUMNS нормализуются в соответствии с UNIT_NORMALIZATION
+    Parsing and converting raw CSV data into a DataFrame.
+    - Each row — each piece of information about the synthesis
+    - MISSING_SENTINEL is replaced with NaN
+    - Units from UNIT_COLUMNS are normalized like UNIT_NORMALIZATION
     """
     df = pd.read_csv(path).drop('answer', axis=1)
     df = df.replace(MISSING_SENTINEL, pd.NA)

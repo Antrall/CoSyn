@@ -39,7 +39,7 @@ NUMERIC_COLUMNS = [
 
 def map_category(value, mapping: dict):
     """
-    Сопоставление категориальных значений с CATEGORIES
+    Mapping categorical values to CATEGORIES
     """
     if pd.isna(value):
         return value
@@ -58,7 +58,7 @@ def map_category(value, mapping: dict):
 
 def parse_float_value(value) -> Optional[str]:
     """
-    Обработка числовых значений либо как числа, либо как среднего по диапазону чисел
+    Parsing numreical value as numbers or as the average of a range
     """
     if pd.isna(value):
         return np.nan
@@ -75,7 +75,7 @@ def parse_float_value(value) -> Optional[str]:
 
 def assign_bin(value, bins: list) -> Optional[str]:
     """
-    Сопоставление числовых значений с бинами из AUTO_TOLERANCE_BINS
+    Mapping numerical values to bins from AUTO_TOLERANCE_BINS
     """
     if pd.isna(value):
         return np.nan
@@ -98,9 +98,9 @@ def assign_bin(value, bins: list) -> Optional[str]:
 
 class Preprocessor:
     """
-    Обработчик датасета
-    - transform: применение дискретизации числовых признаков и нормализации категориальных признаков
-    - coverage_report: статистика по обработке df_raw
+    Dataset preprocessor
+    - transform: discretization of numerical features and normalization of categorical features
+    - coverage_report: statistics for processing df_raw
     """
     def __init__(self, method: str = "grinding"):
         self.method = method

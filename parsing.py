@@ -1,17 +1,14 @@
 from typing import Optional
 import pandas as pd
 
+from resources.config_experiment import UNIT_COLUMNS
+
 MISSING_SENTINEL = "NOT_DETECTED"
 
-UNIT_COLUMNS = [
-    "Amount Unit",
-    "Solvent Amount Unit",
-    "Frequency Unit",
-    "Mixing Time Unit",
-    "Mixing Temperature Unit",
-    "Drying Time Unit",
-    "Drying Temperature Unit",
-]
+NAME_OVERRIDES = {
+    "Time of Drying": "Drying Time",
+    "Temperature of Drying": "Drying Temperature",
+}
 
 UNIT_NORMALIZATION = {
     "minute": "min",
@@ -57,6 +54,7 @@ def parse_raw_csv(path: str, verbose: bool = True, out_path: Optional[str] = Non
     """
     df = pd.read_csv(path).drop('answer', axis=1)
     df = df.replace(MISSING_SENTINEL, pd.NA)
+    df = df.rename(columns=NAME_OVERRIDES)
 
     for col in UNIT_COLUMNS:
         if col in df.columns:

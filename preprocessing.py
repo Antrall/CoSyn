@@ -7,8 +7,9 @@ import pandas as pd
 
 from resources.categories import CATEGORIES
 from resources.auto_tolerance_bins import AUTO_TOLERANCE_BINS
+from resources.config_experiment import NUMERIC_COLUMNS
 
-BIN_NAME_OVERRIDES = {
+NAME_OVERRIDES = {
     "Time of Drying": "Drying Time",
     "Temperature of Drying": "Drying Temperature",
 }
@@ -20,21 +21,6 @@ CATEGORICAL_COLUMN_CHAINS = {
     "Third Solvent": ["solvent_categories", "solvent_families"],
     "Mixing Apparatus": ["mixing_apparatus_categories"],
 }
-
-NUMERIC_COLUMNS = [
-    "Part of Ratio API",
-    "Part of Ratio Coformer",
-    "Amount of API",
-    "Amount of Coformer",
-    "Amount of Solvent",
-    "Amount of Second Solvent",
-    "Amount of Third Solvent",
-    "Mixing Frequency",
-    "Mixing Time",
-    "Mixing Temperature",
-    "Time of Drying",
-    "Temperature of Drying",
-]
 
 
 def map_category(value, mapping: dict):
@@ -117,20 +103,12 @@ class Preprocessor:
             for dict_name in chain:
                 mapping = CATEGORIES[dict_name]
                 series = series.apply(lambda v: map_category(v, mapping))
-            
             df[column] = series
 
         for column in NUMERIC_COLUMNS:
             if column not in df.columns:
                 continue
-                
-            bin_key = BIN_NAME_OVERRIDES.get(column, column)
-            if bin_key not in self.bins:
-                continue
-        
-            df[column] = df[column].apply(lambda v: assign_bin(v, self.bins[bin_key]))
-
-        df = df.rename(columns=BIN_NAME_OVERRIDES)
+            df[column] = df[column].apply(lambda v: assign_bin(v, self.bins[column]))
 
         if out_path:
             df.to_csv(out_path, index=False)
@@ -146,8 +124,6 @@ class Preprocessor:
 
             observed = df_raw[column].notna()
             n_observed = int(observed.sum())
-
-            column = BIN_NAME_OVERRIDES.get(column, column)
 
             if column in CATEGORICAL_COLUMN_CHAINS:
                 final_dict = CATEGORICAL_COLUMN_CHAINS[column][-1]

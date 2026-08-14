@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from resources.config import MISSING_MARKER
+
 import pandas as pd
 
 CANONICAL_UNITS = {
@@ -40,7 +42,7 @@ def classify_unit(raw_unit: str, canonical_unit: str) -> str:
     - another dimension: need external data to convert
     - unknown: not recognized by the dictionary
     """
-    if pd.isna(raw_unit):
+    if raw_unit == MISSING_MARKER:
         return "no data"
 
     raw_norm = str(raw_unit).strip().lower()

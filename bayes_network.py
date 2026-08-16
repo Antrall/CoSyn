@@ -12,7 +12,7 @@ CRITERION_PENALTY = {
 }
 
 
-def criterion(df: pd.DataFrame, node: str, parents: Tuple[str, ...], criterion: str = "bic") -> float:
+def criterion(df: pd.DataFrame, node: str, parents: Tuple[str, ...], method: str = "bic") -> float:
     """
     Score for one node with a given set of parents. Supports different penalties and criterions
     """
@@ -38,7 +38,7 @@ def criterion(df: pd.DataFrame, node: str, parents: Tuple[str, ...], criterion: 
 
     n_node_values = complete[node].nunique()
     n_free_params = n_parent_configs * max(n_node_values - 1, 0)
-    penalty = n_free_params * CRITERION_PENALTY[criterion](n)
+    penalty = n_free_params * CRITERION_PENALTY[method](n)
     return float(log_lik - penalty)
 
 

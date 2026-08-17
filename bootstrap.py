@@ -40,6 +40,21 @@ def bayes_network_edge_fn(columns: Iterable[str], criterion: str, max_parents: i
     return fit_fn
 
 
+def hillclimb_network_edge_fn(columns: Iterable[str], criterion: str, max_parents: int = 1) -> EdgeFitFn:
+    """
+    fit_fn: trains HillClimb Search on columns and returns its edges as frozensets
+    """
+    columns = list(columns)
+
+    def fit_fn(df: pd.DataFrame) -> Set[Edge]:
+        from pgmpy.causal_discovery import HillClimbSearch
+        network = HillClimbSearch(scoring_method=criterion, max_indegree=max_parents)
+        network.fit(df[columns])
+        return {frozenset(edge) for edge in network.causal_graph_.to_undirected().edges()}
+
+    return fit_fn
+
+
 class NetworkBootstrap:
     """
     Bootstrap resampling and structure retraining to estimate stability of edges.

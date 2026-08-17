@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import networkx as nx
 
+from resources.config import *
 from sklearn.metrics import mutual_info_score
 
 
@@ -34,7 +35,7 @@ class MutualInfo:
             for j in range(i + 1, n):
                 col_j = columns[j]
                 pair = df[[col_i, col_j]].dropna()
-                n_pairs = len(pair)
+                n_pairs = len(pair.copy().replace(MISSING_MARKER, pd.NA).dropna())
                 count_matrix.loc[col_i, col_j] = count_matrix.loc[col_j, col_i] = n_pairs
 
                 if n_pairs < self.min_pairs:

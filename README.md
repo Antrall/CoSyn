@@ -91,6 +91,10 @@
 
 ![Bayes Network AIC bootstrap graph](images/bn_aic_bootstrap.png)
 
+**Направленный граф с весами по bootstrap-частоте:**
+
+![Bayes Network AIC bootstrap directed graph](images/bn_aic_bootstrap_directed.png)
+
 ### Модель HillClimb (pgmpy, log-likelihood)
 
 **Единичный фит:**

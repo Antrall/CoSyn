@@ -26,15 +26,18 @@ def chow_liu_edge_fn(columns: Iterable[str], min_pairs: int = 5) -> EdgeFitFn:
     return fit_fn
 
 
-def bayes_network_edge_fn(columns: Iterable[str], criterion: str, max_parents: int = 1, max_iterations: int = 100) -> EdgeFitFn:
+def bayes_network_edge_fn(columns: Iterable[str], criterion: str, max_parents: int = 1,
+                           max_iterations: int = 100, directed: bool = False) -> EdgeFitFn:
     """
     fit_fn: trains Bayes Network on columns and returns its edges as frozensets
     """
     columns = list(columns)
 
-    def fit_fn(df: pd.DataFrame) -> Set[Edge]:
+    def fit_fn(df: pd.DataFrame) -> Set:
         network = BayesNetwork(max_parents=max_parents, max_iterations=max_iterations, criterion=criterion)
         network.fit(df, columns)
+        if directed:
+            return set(network.graph.edges())
         return {frozenset(edge) for edge in network.graph.edges()}
 
     return fit_fn
@@ -59,13 +62,14 @@ class NetworkBootstrap:
     """
     Bootstrap resampling and structure retraining to estimate stability of edges.
     """
-    def __init__(self, fit_fn: EdgeFitFn, n_iterations: int = 50, random_state: int = None):
+    def __init__(self, fit_fn: EdgeFitFn, n_iterations: int = 50, random_state: int = None, directed: bool = False):
         self.fit_fn = fit_fn
         self.n_iterations = n_iterations
         self.random_state = random_state
+        self.directed = directed
 
     def run(self, df: pd.DataFrame) -> pd.DataFrame:
-        counts: dict[Edge, int] = {}
+        counts: dict = {}
 
         for i in tqdm(range(self.n_iterations)):
             sample = df.sample(n=len(df), replace=True, random_state=self._seed(i))
@@ -73,10 +77,16 @@ class NetworkBootstrap:
             for edge in edges:
                 counts[edge] = counts.get(edge, 0) + 1
 
-        rows = [
-            {"V1": sorted(edge)[0], "V2": sorted(edge)[1], "frequency": count / self.n_iterations}
-            for edge, count in counts.items()
-        ]
+        if self.directed:
+            rows = [
+                {"parent": u, "child": v, "frequency": count / self.n_iterations}
+                for (u, v), count in counts.items()
+            ]
+        else:
+            rows = [
+                {"V1": sorted(edge)[0], "V2": sorted(edge)[1], "frequency": count / self.n_iterations}
+                for edge, count in counts.items()
+            ]
         return pd.DataFrame(rows).sort_values("frequency", ascending=False).reset_index(drop=True)
 
     def _seed(self, i: int):

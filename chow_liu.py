@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import networkx as nx
 
-from resources.schemas.config import *
+from resourses.schemas.config import *
 from sklearn.metrics import mutual_info_score
 
 

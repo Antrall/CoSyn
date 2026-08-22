@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from resources.config import MISSING_MARKER
+from resources.schemas.config import MISSING_MARKER
 
 import pandas as pd
 

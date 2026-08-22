@@ -6,8 +6,8 @@ from typing import Optional
 import numpy as np
 import pandas as pd
 
-from resources.config import MISSING_MARKER
-from resources.config import UNIT_COLS
+from resources.schemas.config import MISSING_MARKER
+from resources.schemas.config import UNIT_COLS
 
 
 def _numeric_to_float(num):

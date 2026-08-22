@@ -1,7 +1,7 @@
 from typing import Optional
 import pandas as pd
 
-from resources.config_experiment import UNIT_COLUMNS
+from resources.schemas.config_experiment import UNIT_COLUMNS
 
 NAME_OVERRIDES = {
     "Time of Drying": "Drying Time",

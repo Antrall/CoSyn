@@ -4,10 +4,10 @@ from typing import Optional
 import numpy as np
 import pandas as pd
 
-from resources.categories import CATEGORIES
-from resources.auto_tolerance_bins import AUTO_TOLERANCE_BINS
-from resources.config_experiment import NUMERIC_COLUMNS, CATEGORICAL_COLUMNS
-from resources.config import MISSING_MARKER, UNIT_COLS
+from resources.mappings.categories import CATEGORIES
+from resources.bins.auto_tolerance_bins import AUTO_TOLERANCE_BINS
+from resources.schemas.config_experiment import NUMERIC_COLUMNS, CATEGORICAL_COLUMNS
+from resources.schemas.config import MISSING_MARKER, UNIT_COLS
 
 from preprocessing_units import convert_numeric_to_float, apply_fix_unit
 

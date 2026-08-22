@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from resources.schemas.config import MISSING_MARKER
+from resourses.schemas.config import MISSING_MARKER
 
 import pandas as pd
 
 CANONICAL_UNITS = {
-    "Amount Unit": "mg",
+    "Amount Unit of API": "mg",
+    "Amount Unit of Coformer": "mg",
     "Solvent Amount Unit": "ml",
     "Second Solvent Amount Unit": "ml",
     "Third Solvent Amount Unit": "ml",

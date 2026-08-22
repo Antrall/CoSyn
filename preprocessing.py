@@ -4,12 +4,12 @@ from typing import Optional
 import numpy as np
 import pandas as pd
 
-from resources.mappings.categories import CATEGORIES
-from resources.bins.auto_tolerance_bins import AUTO_TOLERANCE_BINS
-from resources.schemas.config_experiment import NUMERIC_COLUMNS, CATEGORICAL_COLUMNS
-from resources.schemas.config import MISSING_MARKER, UNIT_COLS
+from resourses.mappings.categories import CATEGORIES
+from resourses.bins.auto_tolerance_bins import AUTO_TOLERANCE_BINS
+from resourses.schemas.config_experiment import COLUMNS, NUMERIC_COLUMNS, CATEGORICAL_COLUMNS
+from resourses.schemas.config import MISSING_MARKER, UNIT_COLS
 
-from preprocessing_units import convert_numeric_to_float, apply_fix_unit
+from preprocessing_units import convert_numeric_to_float, apply_unit_normalization
 
 CATEGORICAL_COLUMN_CHAINS = {
     "Type of Synthesis": ["type_of_synthesis_categories"],
@@ -112,12 +112,12 @@ class Preprocessor:
         self.unit_cols = UNIT_COLS[method]
         self._stages: dict = {}
 
-    def transform(self, df: pd.DataFrame, out_path: Optional[str] = None, verbose: bool = True) -> pd.DataFrame:
+    def transform(self, df: pd.DataFrame, out_path: Optional[str] = None, use_remote=True, verbose: bool = True) -> pd.DataFrame:
         df = df.where(df.notna(), MISSING_MARKER)
         self._stages = {"raw": df.copy()}
 
         df = convert_numeric_to_float(df, NUMERIC_COLUMNS)
-        df = apply_fix_unit(df, self.unit_cols)
+        df = apply_unit_normalization(df, self.unit_cols, use_remote=use_remote, verbose=verbose)
         self._stages["after_norm_units"] = df.copy()
 
         df = apply_map_categorical(df, CATEGORICAL_COLUMN_CHAINS, verbose=verbose)
@@ -125,6 +125,8 @@ class Preprocessor:
 
         df = apply_map_bins(df, self.bins, NUMERIC_COLUMNS, verbose=verbose)
         self._stages["after_map_bins"] = df.copy()
+
+        df = df[COLUMNS]
 
         if out_path:
             df.to_csv(out_path, index=False)

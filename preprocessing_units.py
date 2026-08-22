@@ -1,13 +1,48 @@
 from __future__ import annotations
 
 import re
-from typing import Optional
+from pathlib import Path
+from tqdm import tqdm
 
-import numpy as np
-import pandas as pd
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 
-from resources.config import MISSING_MARKER
-from resources.config import UNIT_COLS
+from resourses.schemas.config import MISSING_MARKER
+
+from src.cosyn.normalization.data_cleaning import (
+    CASHE_MANUAL,
+    cashe_load,
+    cashe_save,
+    name_to_smiles,
+    apply_fix_unit,
+    _try_cactus,
+    _try_opsin,
+    _try_pubchem_cid,
+    _try_pubchem_name,
+    _try_pubchempy_api,
+    _try_chembl,
+)
+
+DEFAULT_CACHE_PATH = Path(__file__).resolve().parent / "resourses" / "caches" / "cashe_auto.pickle"
+
+_RESOLVER_EXECUTOR = ThreadPoolExecutor(max_workers=8)
+
+
+def _with_hard_timeout(fn, hard_timeout_margin=5):
+    def wrapped(name, timeout):
+        future = _RESOLVER_EXECUTOR.submit(fn, name, timeout)
+        try:
+            return future.result(timeout=timeout + hard_timeout_margin)
+        except FutureTimeoutError:
+            return None
+        except Exception:
+            return None
+    return wrapped
+
+
+RESOLVERS = [
+    _with_hard_timeout(fn)
+    for fn in (_try_cactus, _try_opsin, _try_pubchem_name, _try_pubchem_cid, _try_pubchempy_api, _try_chembl)
+]
 
 
 def _numeric_to_float(num):
@@ -32,102 +67,72 @@ def convert_numeric_to_float(df, columns):
     return df
 
 
-def _fix_unit_ml(amount, unit):
-    unit = str(unit).strip().lower()
-    conversion_factors = {
-        "µl": 0.001,
-        "μl": 0.001,
-        "ul": 0.001,
-        "ml": 1,
-        "l": 1000,
-        "kg": 1000,
-        "g": 1,
-        "mg": 0.001,
-        "cm3": 1,
-        "cm³": 1,
-        "drop": 0.05,
-        "drops": 0.05,
-    }
-    if (unit in conversion_factors.keys()) and (amount != MISSING_MARKER):
-        return amount * conversion_factors[unit], "ml"
-    else:
-        return MISSING_MARKER, MISSING_MARKER
-
-
-def _fix_unit_min(amount, unit):
-    unit = str(unit).strip().lower()
-    conversion_factors = {
-        "s": 1 / 60,
-        "sec": 1 / 60,
-        "second": 1 / 60,
-        "seconds": 1 / 60,
-        "min": 1, "mins": 1,
-        "minute": 1,
-        "minutes": 1,
-        "h": 60,
-        "hr": 60,
-        "hrs": 60,
-        "hour": 60,
-        "hours": 60,
-        "d": 24 * 60,
-        "day": 24 * 60,
-        "days": 24 * 60,
-        "week": 24 * 60 * 7,
-        "weeks": 24 * 60 * 7,
-    }
-    if (unit in conversion_factors.keys()) and (amount != MISSING_MARKER):
-        return amount * conversion_factors[unit], "min"
-    else:
-        return MISSING_MARKER, MISSING_MARKER
-
-
-def _fix_unit_c(amount, unit):
-    unit = str(unit).strip().lower()
-    converters = {
-        "°c": lambda x: x,
-        "◦c": lambda x: x,
-        "c": lambda x: x,
-        "k": lambda x: x - 273.15,
-    }
-    if (unit in converters.keys()) and (amount != MISSING_MARKER):
-        return converters[unit](amount), "c"
-    else:
-        return MISSING_MARKER, MISSING_MARKER
-
-
-def _fix_unit_hz(amount, unit):
-    unit = str(unit).strip().lower()
-    conversion_factors = {
-        "khz": 1000,
-        "hz": 1,
-        "hertz": 1,
-        "s-1": 1,
-        "rpm": 1 / 60
-    }
-    if (unit in conversion_factors.keys()) and (amount != MISSING_MARKER):
-        return amount * conversion_factors[unit], "hz"
-    else:
-        return MISSING_MARKER, MISSING_MARKER
-
-
-def apply_fix_unit(df, unit_cols):
+def prepare_amount_unit_columns(df, shared_col: str = "Amount Unit", targets_col=("Amount Unit of API", "Amount Unit of Coformer")):
     """
-    Applies normalization of units to canonical values
+    Splits the shared unit column into per-compound unit columns
     """
-    for target_unit, sets_of_cols in unit_cols.items():
-        for cols in sets_of_cols:
-            if not all(c in df.columns for c in cols):
-                continue
-            if target_unit == "ml":
-                df[cols] = df.apply(lambda x: _fix_unit_ml(x[cols[0]], x[cols[1]]),
-                                     axis="columns", result_type="expand")
-            elif target_unit == "c":
-                df[cols] = df.apply(lambda x: _fix_unit_c(x[cols[0]], x[cols[1]]),
-                                     axis="columns", result_type="expand")
-            elif target_unit == "min":
-                df[cols] = df.apply(lambda x: _fix_unit_min(x[cols[0]], x[cols[1]]),
-                                     axis="columns", result_type="expand")
-            elif target_unit == "hz":
-                df[cols] = df.apply(lambda x: _fix_unit_hz(x[cols[0]], x[cols[1]]),
-                                     axis="columns", result_type="expand")
+    if shared_col in df.columns:
+        for target in targets_col:
+            if target not in df.columns:
+                df[target] = df[shared_col]
+    return df
+
+
+def resolve_amount_smiles(df, name_cols=("API", "Coformer"), cache_path: Path = DEFAULT_CACHE_PATH,
+                          timeout: int = 8, use_remote: bool = True, verbose: bool = True):
+    """
+    Resolves compound names in name_cols to SMILES, needed to compute molecular weight. Results are cached to disk
+    """
+    cache = cashe_load(cache_path)
+    cache.update(CASHE_MANUAL)
+
+    invalid_names = set()
+    unique_names = set()
+
+    for col in name_cols:
+        if col in df.columns:
+            unique_names.update(df[col].dropna().unique())
+    unique_names.discard(MISSING_MARKER)
+
+    resolved = {MISSING_MARKER: MISSING_MARKER}
+    iterator = tqdm(sorted(unique_names), desc="Resolving SMILES for amount normalization") if verbose else sorted(unique_names)
+    
+    for i, name in enumerate(iterator):
+        resolved[name] = name_to_smiles(name, cache, timeout, RESOLVERS, invalid_names, use_remote=use_remote) or MISSING_MARKER
+        if use_remote and (i + 1) % 10 == 0:
+            cashe_save(cache, cache_path)
+
+    if use_remote:
+        cashe_save(cache, cache_path)
+
+    for col in name_cols:
+        if col in df.columns:
+            df[f"{col} SMILES"] = df[col].map(resolved)
+
+    if verbose:
+        print(f"[SMILES] resolved {sum(v != MISSING_MARKER for v in resolved.values())}/{len(resolved)} unique names")
+
+    return df
+
+
+def amount_unit_cols_with_smiles(unit_cols, name_cols=("API", "Coformer"), smiles_suffix: str = " SMILES"):
+    """
+    Returns a copy of unit_cols where the "mg" entries point at the resolved "<name_col> SMILES" columns instead of the raw name columns
+    """
+    updated = {target_unit: [list(cols) for cols in sets_of_cols] for target_unit, sets_of_cols in unit_cols.items()}
+    for cols in updated.get("mg", []):
+        if cols and cols[0] in name_cols:
+            cols[0] = f"{cols[0]}{smiles_suffix}"
+    return updated
+
+
+def apply_unit_normalization(df, unit_cols, name_cols=("API", "Coformer"), cache_path: Path = DEFAULT_CACHE_PATH, use_remote: bool = True, verbose: bool = True):
+    """
+    Applies unit normalization for all target units in unit_cols
+    """
+    df = prepare_amount_unit_columns(df)
+    df = resolve_amount_smiles(df, name_cols=name_cols, cache_path=cache_path, use_remote=use_remote, verbose=verbose)
+
+    unit_cols = amount_unit_cols_with_smiles(unit_cols, name_cols=name_cols)
+    df = apply_fix_unit(df, unit_cols)
     return df

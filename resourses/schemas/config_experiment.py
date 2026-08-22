@@ -38,20 +38,26 @@ COLUMNS = [
     'doi',
     'Type of Synthesis',
     'Formula',
+    # ----
     'API',
     'Coformer',
+    'API SMILES',
+    'Coformer SMILES',
     'Part of Ratio API',
     'Part of Ratio Coformer',
     'Amount of API',
     'Amount of Coformer',
-    'Amount Unit',
+    'Amount Unit of API',
+    'Amount Unit of Coformer',
+    # ----
     'Solvent',
     'Amount of Solvent',
-    'Solvent Amount Unit',
     'Second Solvent',
     'Amount of Second Solvent',
     'Third Solvent',
     'Amount of Third Solvent',
+    'Solvent Amount Unit',
+    # ----
     'Mixing Apparatus',
     'Mixing Frequency',
     'Frequency Unit',
@@ -59,17 +65,18 @@ COLUMNS = [
     'Mixing Time Unit',
     'Mixing Temperature',
     'Mixing Temperature Unit',
+    # ----
     'Drying Time',
     'Drying Time Unit',
     'Drying Temperature',
     'Drying Temperature Unit',
-    'Temperature of Drying (numeric)'
 ]
 
 ### Columns by type
 
 UNIT_COLUMNS = [
-    "Amount Unit",
+    "Amount Unit of API",
+    "Amount Unit of Coformer",
     "Solvent Amount Unit",
     "Frequency Unit",
     "Mixing Time Unit",
